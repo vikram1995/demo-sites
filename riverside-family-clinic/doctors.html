@@ -1,0 +1,596 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Find a Doctor — Riverside Family Clinic</title>
+  <meta name="description"
+    content="Meet the board-certified physicians, nurse practitioners, and specialists at Riverside Family Clinic. View profiles, specialties, weekly availability, and who's accepting new patients." />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="icon"
+    href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%230e7490'/%3E%3Cpath d='M44 22h12v22h22v12H56v22H44V56H22V44h22z' fill='white'/%3E%3C/svg%3E" />
+</head>
+
+<body>
+  <!-- Header -->
+  <header class="site-header">
+    <div class="container nav">
+      <a class="brand" href="index.html">
+        <span class="logo">✚</span>
+        <span>
+          Riverside Family Clinic
+          <small>DOWNTOWN RIVERSIDE</small>
+        </span>
+      </a>
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="departments.html">Departments</a></li>
+        <li><a href="doctors.html" class="active">Find a Doctor</a></li>
+        <li><a href="services.html">Services &amp; Pricing</a></li>
+        <li><a href="locations.html">Locations</a></li>
+      </ul>
+
+    </div>
+  </header>
+
+  <main>
+    <!-- Page hero -->
+    <section class="page-hero">
+      <div class="container">
+        <nav class="breadcrumbs">
+          <a href="index.html">Home</a><span>/</span>Find a Doctor
+        </nav>
+        <h1>Find a doctor</h1>
+        <p>
+          Meet the providers who treat you like family. Every physician is
+          board-certified, and our nurse practitioners bring decades of combined
+          experience. Filter by specialty, then view weekly availability and who
+          is currently accepting new patients.
+        </p>
+      </div>
+    </section>
+
+    <section>
+      <div class="container">
+        <!-- Filter bar (progressive enhancement; all show by default) -->
+        <div class="filter-bar" id="filterBar">
+          <button type="button" class="active" data-filter="all">All providers</button>
+          <button type="button" data-filter="family-medicine">Family Medicine</button>
+          <button type="button" data-filter="pediatrics">Pediatrics</button>
+          <button type="button" data-filter="womens-health">Women's Health</button>
+          <button type="button" data-filter="urgent-care">Urgent Care</button>
+          <button type="button" data-filter="cardiology">Cardiology</button>
+          <button type="button" data-filter="behavioral-health">Behavioral Health</button>
+          <button type="button" data-filter="orthopedics">Orthopedics</button>
+          <button type="button" data-filter="dermatology">Dermatology</button>
+        </div>
+
+        <div class="doctor-grid" id="doctorGrid">
+          <!-- Dr. Anita Rao -->
+          <article class="doc-card" id="anita-rao" data-specialty="family-medicine">
+            <div class="doc-top">
+              <div class="avatar">AR</div>
+              <div>
+                <h3>Dr. Anita Rao, MD</h3>
+                <div class="role">Family Medicine · Lead Physician</div>
+              </div>
+            </div>
+            <p class="bio">
+              Lead physician with 18 years in primary and preventive care. Dr. Rao
+              focuses on chronic-disease management and building long-term
+              relationships with families across generations.
+            </p>
+            <div class="doc-meta">
+              <div class="row"><span class="k">New patients</span><span class="v"><span
+                    class="badge badge-open">Accepting</span></span></div>
+              <div class="row"><span class="k">Languages</span><span class="v">English, Hindi</span></div>
+              <div class="row"><span class="k">Board cert.</span><span class="v">Am. Board of Family Medicine</span>
+              </div>
+            </div>
+            <table class="avail-table">
+              <thead>
+                <tr>
+                  <th>Day</th>
+                  <th>Hours</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Mon</td>
+                  <td class="slot">8:00 AM – 4:00 PM</td>
+                </tr>
+                <tr>
+                  <td>Tue</td>
+                  <td class="slot">8:00 AM – 4:00 PM</td>
+                </tr>
+                <tr>
+                  <td>Wed</td>
+                  <td class="off">Not scheduled</td>
+                </tr>
+                <tr>
+                  <td>Thu</td>
+                  <td class="slot">10:00 AM – 6:00 PM</td>
+                </tr>
+                <tr>
+                  <td>Fri</td>
+                  <td class="slot">8:00 AM – 2:00 PM</td>
+                </tr>
+              </tbody>
+            </table>
+            <a class="btn btn-primary" href="index.html#contact" style="margin-top: 16px; text-align: center">Book with
+              Dr. Rao</a>
+          </article>
+
+          <!-- Dr. James Cole -->
+          <article class="doc-card" id="james-cole" data-specialty="pediatrics">
+            <div class="doc-top">
+              <div class="avatar">JC</div>
+              <div>
+                <h3>Dr. James Cole, MD</h3>
+                <div class="role">Pediatrics</div>
+              </div>
+            </div>
+            <p class="bio">
+              Pediatrician focused on newborn and adolescent health. Dr. Cole is
+              known for a calm, kid-friendly manner and takes extra time to walk
+              parents through developmental milestones.
+            </p>
+            <div class="doc-meta">
+              <div class="row"><span class="k">New patients</span><span class="v"><span
+                    class="badge badge-open">Accepting</span></span></div>
+              <div class="row"><span class="k">Languages</span><span class="v">English, Spanish</span></div>
+              <div class="row"><span class="k">Board cert.</span><span class="v">Am. Board of Pediatrics</span></div>
+            </div>
+            <table class="avail-table">
+              <thead>
+                <tr>
+                  <th>Day</th>
+                  <th>Hours</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Mon</td>
+                  <td class="slot">9:00 AM – 5:00 PM</td>
+                </tr>
+                <tr>
+                  <td>Tue</td>
+                  <td class="off">Not scheduled</td>
+                </tr>
+                <tr>
+                  <td>Wed</td>
+                  <td class="slot">9:00 AM – 5:00 PM</td>
+                </tr>
+                <tr>
+                  <td>Thu</td>
+                  <td class="slot">9:00 AM – 5:00 PM</td>
+                </tr>
+                <tr>
+                  <td>Fri</td>
+                  <td class="slot">9:00 AM – 3:00 PM</td>
+                </tr>
+              </tbody>
+            </table>
+            <a class="btn btn-primary" href="index.html#contact" style="margin-top: 16px; text-align: center">Book with
+              Dr. Cole</a>
+          </article>
+
+          <!-- Dr. Maria Perez -->
+          <article class="doc-card" id="maria-perez" data-specialty="womens-health">
+            <div class="doc-top">
+              <div class="avatar">MP</div>
+              <div>
+                <h3>Dr. Maria Perez, DO</h3>
+                <div class="role">Women's Health / OB-GYN</div>
+              </div>
+            </div>
+            <p class="bio">
+              Provides prenatal care and well-woman exams with a gentle,
+              patient-centered approach. Dr. Perez supports patients through
+              pregnancy, family planning, and menopause.
+            </p>
+            <div class="doc-meta">
+              <div class="row"><span class="k">New patients</span><span class="v"><span
+                    class="badge badge-wait">Waitlist</span></span></div>
+              <div class="row"><span class="k">Languages</span><span class="v">English, Spanish</span></div>
+              <div class="row"><span class="k">Board cert.</span><span class="v">Am. Board of OB-GYN</span></div>
+            </div>
+            <table class="avail-table">
+              <thead>
+                <tr>
+                  <th>Day</th>
+                  <th>Hours</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Mon</td>
+                  <td class="slot">8:00 AM – 3:00 PM</td>
+                </tr>
+                <tr>
+                  <td>Tue</td>
+                  <td class="slot">8:00 AM – 3:00 PM</td>
+                </tr>
+                <tr>
+                  <td>Wed</td>
+                  <td class="slot">8:00 AM – 3:00 PM</td>
+                </tr>
+                <tr>
+                  <td>Thu</td>
+                  <td class="off">Not scheduled</td>
+                </tr>
+                <tr>
+                  <td>Fri</td>
+                  <td class="off">Not scheduled</td>
+                </tr>
+              </tbody>
+            </table>
+            <a class="btn btn-primary" href="index.html#contact" style="margin-top: 16px; text-align: center">Book with
+              Dr. Perez</a>
+          </article>
+
+          <!-- Thomas Nguyen, NP -->
+          <article class="doc-card" id="thomas-nguyen" data-specialty="urgent-care">
+            <div class="doc-top">
+              <div class="avatar">TN</div>
+              <div>
+                <h3>Thomas Nguyen, NP</h3>
+                <div class="role">Urgent Care</div>
+              </div>
+            </div>
+            <p class="bio">
+              Nurse practitioner leading our same-day walk-in clinic. Thomas
+              handles minor injuries and acute illness efficiently, and is a
+              familiar face for families needing fast, friendly care.
+            </p>
+            <div class="doc-meta">
+              <div class="row"><span class="k">New patients</span><span class="v"><span
+                    class="badge badge-open">Walk-in</span></span></div>
+              <div class="row"><span class="k">Languages</span><span class="v">English, Vietnamese</span></div>
+              <div class="row"><span class="k">Credential</span><span class="v">Family NP (FNP-C)</span></div>
+            </div>
+            <table class="avail-table">
+              <thead>
+                <tr>
+                  <th>Day</th>
+                  <th>Hours</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Mon–Fri</td>
+                  <td class="slot">8:00 AM – 7:00 PM</td>
+                </tr>
+                <tr>
+                  <td>Sat</td>
+                  <td class="slot">9:00 AM – 4:00 PM</td>
+                </tr>
+                <tr>
+                  <td>Sun</td>
+                  <td class="slot">10:00 AM – 2:00 PM</td>
+                </tr>
+              </tbody>
+            </table>
+            <a class="btn btn-ghost" href="services.html#urgent-care"
+              style="margin-top: 16px; text-align: center">Urgent care is walk-in</a>
+          </article>
+
+          <!-- Dr. David Okafor -->
+          <article class="doc-card" id="david-okafor" data-specialty="cardiology">
+            <div class="doc-top">
+              <div class="avatar">DO</div>
+              <div>
+                <h3>Dr. David Okafor, MD</h3>
+                <div class="role">Cardiology (Visiting)</div>
+              </div>
+            </div>
+            <p class="bio">
+              Cardiologist running our weekly heart-health clinic. Dr. Okafor
+              treats common heart problems, manages high cholesterol and blood
+              pressure, and coordinates closely with primary care.
+            </p>
+            <div class="doc-meta">
+              <div class="row"><span class="k">New patients</span><span class="v"><span class="badge badge-open">By
+                    referral</span></span></div>
+              <div class="row"><span class="k">Languages</span><span class="v">English</span></div>
+              <div class="row"><span class="k">Board cert.</span><span class="v">Am. Board of Internal Medicine
+                  (Cardiology)</span></div>
+            </div>
+            <table class="avail-table">
+              <thead>
+                <tr>
+                  <th>Day</th>
+                  <th>Hours</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Mon</td>
+                  <td class="off">Not scheduled</td>
+                </tr>
+                <tr>
+                  <td>Tue</td>
+                  <td class="slot">9:00 AM – 4:00 PM</td>
+                </tr>
+                <tr>
+                  <td>Wed</td>
+                  <td class="off">Not scheduled</td>
+                </tr>
+                <tr>
+                  <td>Thu</td>
+                  <td class="slot">9:00 AM – 4:00 PM</td>
+                </tr>
+                <tr>
+                  <td>Fri</td>
+                  <td class="off">Not scheduled</td>
+                </tr>
+              </tbody>
+            </table>
+            <a class="btn btn-primary" href="index.html#contact" style="margin-top: 16px; text-align: center">Request a
+              referral</a>
+          </article>
+
+          <!-- Dr. Sarah Lin -->
+          <article class="doc-card" id="sarah-lin" data-specialty="behavioral-health">
+            <div class="doc-top">
+              <div class="avatar">SL</div>
+              <div>
+                <h3>Dr. Sarah Lin, PsyD</h3>
+                <div class="role">Behavioral Health</div>
+              </div>
+            </div>
+            <p class="bio">
+              Clinical psychologist offering confidential counseling for anxiety,
+              depression, and life transitions, integrated with your primary
+              care team for whole-person support.
+            </p>
+            <div class="doc-meta">
+              <div class="row"><span class="k">New patients</span><span class="v"><span
+                    class="badge badge-open">Accepting</span></span></div>
+              <div class="row"><span class="k">Languages</span><span class="v">English, Mandarin</span></div>
+              <div class="row"><span class="k">Credential</span><span class="v">Licensed Clinical Psychologist</span>
+              </div>
+            </div>
+            <table class="avail-table">
+              <thead>
+                <tr>
+                  <th>Day</th>
+                  <th>Hours</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Mon</td>
+                  <td class="slot">11:00 AM – 7:00 PM</td>
+                </tr>
+                <tr>
+                  <td>Tue</td>
+                  <td class="slot">11:00 AM – 7:00 PM</td>
+                </tr>
+                <tr>
+                  <td>Wed</td>
+                  <td class="slot">11:00 AM – 7:00 PM</td>
+                </tr>
+                <tr>
+                  <td>Thu</td>
+                  <td class="off">Not scheduled</td>
+                </tr>
+                <tr>
+                  <td>Fri</td>
+                  <td class="slot">9:00 AM – 1:00 PM</td>
+                </tr>
+              </tbody>
+            </table>
+            <a class="btn btn-primary" href="index.html#contact" style="margin-top: 16px; text-align: center">Book with
+              Dr. Lin</a>
+          </article>
+
+          <!-- Dr. Marcus Hill -->
+          <article class="doc-card" id="marcus-hill" data-specialty="orthopedics">
+            <div class="doc-top">
+              <div class="avatar">MH</div>
+              <div>
+                <h3>Dr. Marcus Hill, MD</h3>
+                <div class="role">Orthopedics &amp; Sports Medicine</div>
+              </div>
+            </div>
+            <p class="bio">
+              Orthopedic and sports-medicine physician treating sprains,
+              fractures, and joint pain. Dr. Hill emphasizes non-surgical
+              recovery and getting active patients back to their routines.
+            </p>
+            <div class="doc-meta">
+              <div class="row"><span class="k">New patients</span><span class="v"><span
+                    class="badge badge-open">Accepting</span></span></div>
+              <div class="row"><span class="k">Languages</span><span class="v">English</span></div>
+              <div class="row"><span class="k">Board cert.</span><span class="v">Am. Board of Orthopaedic Surgery</span>
+              </div>
+            </div>
+            <table class="avail-table">
+              <thead>
+                <tr>
+                  <th>Day</th>
+                  <th>Hours</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Mon</td>
+                  <td class="slot">8:00 AM – 4:00 PM</td>
+                </tr>
+                <tr>
+                  <td>Tue</td>
+                  <td class="off">Not scheduled</td>
+                </tr>
+                <tr>
+                  <td>Wed</td>
+                  <td class="slot">8:00 AM – 4:00 PM</td>
+                </tr>
+                <tr>
+                  <td>Thu</td>
+                  <td class="slot">8:00 AM – 4:00 PM</td>
+                </tr>
+                <tr>
+                  <td>Fri</td>
+                  <td class="off">Not scheduled</td>
+                </tr>
+              </tbody>
+            </table>
+            <a class="btn btn-primary" href="index.html#contact" style="margin-top: 16px; text-align: center">Book with
+              Dr. Hill</a>
+          </article>
+
+          <!-- Dr. Priya Shah -->
+          <article class="doc-card" id="priya-shah" data-specialty="dermatology">
+            <div class="doc-top">
+              <div class="avatar">PS</div>
+              <div>
+                <h3>Dr. Priya Shah, MD</h3>
+                <div class="role">Dermatology</div>
+              </div>
+            </div>
+            <p class="bio">
+              Medical dermatologist treating acne, eczema, and skin conditions,
+              with a focus on annual skin-cancer screening and same-visit
+              biopsies of suspicious lesions.
+            </p>
+            <div class="doc-meta">
+              <div class="row"><span class="k">New patients</span><span class="v"><span
+                    class="badge badge-wait">Waitlist</span></span></div>
+              <div class="row"><span class="k">Languages</span><span class="v">English, Gujarati</span></div>
+              <div class="row"><span class="k">Board cert.</span><span class="v">Am. Board of Dermatology</span></div>
+            </div>
+            <table class="avail-table">
+              <thead>
+                <tr>
+                  <th>Day</th>
+                  <th>Hours</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Mon</td>
+                  <td class="off">Not scheduled</td>
+                </tr>
+                <tr>
+                  <td>Tue</td>
+                  <td class="slot">8:30 AM – 4:30 PM</td>
+                </tr>
+                <tr>
+                  <td>Wed</td>
+                  <td class="slot">8:30 AM – 4:30 PM</td>
+                </tr>
+                <tr>
+                  <td>Thu</td>
+                  <td class="off">Not scheduled</td>
+                </tr>
+                <tr>
+                  <td>Fri</td>
+                  <td class="slot">8:30 AM – 12:30 PM</td>
+                </tr>
+              </tbody>
+            </table>
+            <a class="btn btn-primary" href="index.html#contact" style="margin-top: 16px; text-align: center">Book with
+              Dr. Shah</a>
+          </article>
+        </div>
+
+        <p class="price-note" id="noMatch" style="display: none; text-align: center; margin-top: 30px">
+          No providers match that specialty right now. Call
+          <a href="tel:+15095550142">(509) 555-0142</a> and we'll help you find care.
+        </p>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="soft">
+      <div class="container">
+        <div class="cta">
+          <h2>Ready to book with a provider?</h2>
+          <p>
+            Choose a provider above and book online, or let our chat assistant
+            match you to the right person based on what you need.
+          </p>
+          <div class="hero-actions" style="justify-content: center">
+            <a class="btn btn-ghost" href="index.html#contact">Book an appointment</a>
+            <a class="btn btn-ghost" href="tel:+15095550142">Call (509) 555-0142</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div>
+          <div class="brand" style="color: #fff">
+            <span class="logo">✚</span>
+            <span>Riverside Family Clinic</span>
+          </div>
+          <p style="margin-top: 14px; color: #94a3b8; max-width: 40ch">
+            Compassionate primary, pediatric, and urgent care for the Riverside
+            community since 2004.
+          </p>
+        </div>
+        <div>
+          <h4>Care</h4>
+          <ul>
+            <li><a href="departments.html">Departments</a></li>
+            <li><a href="services.html">Services &amp; Pricing</a></li>
+            <li><a href="doctors.html">Find a Doctor</a></li>
+            <li><a href="services.html#urgent-care">Urgent Care</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4>Visit</h4>
+          <ul>
+            <li><a href="locations.html">Hours &amp; Location</a></li>
+            <li><a href="locations.html#insurance">Insurance</a></li>
+            <li><a href="index.html#faq">FAQ</a></li>
+            <li><a href="index.html#contact">Book Appointment</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>© 2026 Riverside Family Clinic. This is a fictional demo site.</span>
+        <span>For emergencies, call 911.</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Specialty filter (progressive enhancement) -->
+  <script>
+    (function () {
+      var bar = document.getElementById("filterBar");
+      var grid = document.getElementById("doctorGrid");
+      var noMatch = document.getElementById("noMatch");
+      if (!bar || !grid) return;
+      var cards = Array.prototype.slice.call(grid.querySelectorAll(".doc-card"));
+
+      bar.addEventListener("click", function (e) {
+        var btn = e.target.closest("button[data-filter]");
+        if (!btn) return;
+        var filter = btn.getAttribute("data-filter");
+
+        bar.querySelectorAll("button").forEach(function (b) {
+          b.classList.toggle("active", b === btn);
+        });
+
+        var visible = 0;
+        cards.forEach(function (card) {
+          var match = filter === "all" || card.getAttribute("data-specialty") === filter;
+          card.style.display = match ? "" : "none";
+          if (match) visible++;
+        });
+        if (noMatch) noMatch.style.display = visible === 0 ? "block" : "none";
+      });
+    })();
+  </script>
+
+  <script src="demo-config.js"></script>
+</body>
+
+</html>
