@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
  * GET /api/appointments?doctor=<slug|id>&date=YYYY-MM-DD&status=<status>&stats=1
  * Lists appointments (used by the staff dashboard). Optionally includes stats.
  */
-export function GET(req: NextRequest) {
+export async function GET(req: NextRequest) {
   const sp = req.nextUrl.searchParams;
   const doctorParam = sp.get("doctor") ?? undefined;
   const date = sp.get("date") ?? undefined;
@@ -27,17 +27,17 @@ export function GET(req: NextRequest) {
     const asId = Number(doctorParam);
     const doctor =
       Number.isInteger(asId) && asId > 0
-        ? getDoctorById(asId)
-        : getDoctorBySlug(doctorParam);
+        ? await getDoctorById(asId)
+        : await getDoctorBySlug(doctorParam);
     if (!doctor) {
       return NextResponse.json({ error: "Doctor not found." }, { status: 404 });
     }
     doctorId = doctor.id;
   }
 
-  const appointments = listAppointments({ doctorId, date, status });
+  const appointments = await listAppointments({ doctorId, date, status });
   const body: Record<string, unknown> = { appointments };
-  if (includeStats) body.stats = getDashboardStats();
+  if (includeStats) body.stats = await getDashboardStats();
   return NextResponse.json(body);
 }
 
@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "A valid startMinute is required." }, { status: 400 });
   }
 
-  const result = createAppointment({
+  const result = await createAppointment({
     doctorId,
     startMinute,
     date: String(payload.date ?? ""),

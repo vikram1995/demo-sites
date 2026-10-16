@@ -1,4 +1,4 @@
-import { getDb } from "./db";
+import { getPool, ensureReady } from "./db";
 
 /* ------------------------------------------------------------------ */
 /* Types (shape returned to the API / client)                         */
@@ -75,7 +75,22 @@ export const VISIT_TYPES = [
 ] as const;
 
 /* ------------------------------------------------------------------ */
-/* Time helpers                                                        */
+/* DB access helper                                                    */
+/* ------------------------------------------------------------------ */
+
+// Every query path ensures the schema+seed exist first (idempotent, memoised),
+// then runs against the shared pool.
+async function query<T extends Record<string, unknown>>(
+  text: string,
+  params: unknown[] = []
+): Promise<T[]> {
+  await ensureReady();
+  const res = await getPool().query(text, params);
+  return res.rows as T[];
+}
+
+/* ------------------------------------------------------------------ */
+/* Time helpers (pure)                                                 */
 /* ------------------------------------------------------------------ */
 
 export function minutesToHHMM(mins: number): string {
@@ -173,59 +188,48 @@ const DOCTOR_SELECT = `
 /* Departments                                                         */
 /* ------------------------------------------------------------------ */
 
-export function listDepartments(): Department[] {
-  const db = getDb();
-  return db
-    .prepare(
-      `SELECT id, slug, name, tag, icon, summary
-       FROM departments ORDER BY sort_order, name`
-    )
-    .all() as Department[];
+export async function listDepartments(): Promise<Department[]> {
+  return query<Department>(
+    `SELECT id, slug, name, tag, icon, summary
+     FROM departments ORDER BY sort_order, name`
+  );
 }
 
 /* ------------------------------------------------------------------ */
 /* Doctors                                                             */
 /* ------------------------------------------------------------------ */
 
-function scheduleFor(doctorId: number): ScheduleRow[] {
-  const db = getDb();
-  const rows = db
-    .prepare(
-      `SELECT weekday, start_minute AS startMinute, end_minute AS endMinute
-       FROM doctor_schedules WHERE doctor_id = ? ORDER BY weekday`
-    )
-    .all(doctorId) as ScheduleRow[];
-  return rows;
+async function scheduleFor(doctorId: number): Promise<ScheduleRow[]> {
+  return query<ScheduleRow>(
+    `SELECT weekday,
+            start_minute AS "startMinute",
+            end_minute   AS "endMinute"
+     FROM doctor_schedules WHERE doctor_id = $1 ORDER BY weekday`,
+    [doctorId]
+  );
 }
 
-export function listDoctors(departmentSlug?: string): Doctor[] {
-  const db = getDb();
-  const rows = (
+export async function listDoctors(departmentSlug?: string): Promise<Doctor[]> {
+  const rows =
     departmentSlug && departmentSlug !== "all"
-      ? db
-          .prepare(`${DOCTOR_SELECT} WHERE dep.slug = ? ORDER BY d.sort_order`)
-          .all(departmentSlug)
-      : db.prepare(`${DOCTOR_SELECT} ORDER BY d.sort_order`).all()
-  ) as DoctorRow[];
-  return rows.map((r) => mapDoctor(r, scheduleFor(r.id)));
+      ? await query<DoctorRow>(
+          `${DOCTOR_SELECT} WHERE dep.slug = $1 ORDER BY d.sort_order`,
+          [departmentSlug]
+        )
+      : await query<DoctorRow>(`${DOCTOR_SELECT} ORDER BY d.sort_order`);
+  return Promise.all(rows.map(async (r) => mapDoctor(r, await scheduleFor(r.id))));
 }
 
-export function getDoctorBySlug(slug: string): Doctor | null {
-  const db = getDb();
-  const row = db
-    .prepare(`${DOCTOR_SELECT} WHERE d.slug = ?`)
-    .get(slug) as DoctorRow | undefined;
-  if (!row) return null;
-  return mapDoctor(row, scheduleFor(row.id));
+export async function getDoctorBySlug(slug: string): Promise<Doctor | null> {
+  const rows = await query<DoctorRow>(`${DOCTOR_SELECT} WHERE d.slug = $1`, [slug]);
+  if (rows.length === 0) return null;
+  return mapDoctor(rows[0], await scheduleFor(rows[0].id));
 }
 
-export function getDoctorById(id: number): Doctor | null {
-  const db = getDb();
-  const row = db
-    .prepare(`${DOCTOR_SELECT} WHERE d.id = ?`)
-    .get(id) as DoctorRow | undefined;
-  if (!row) return null;
-  return mapDoctor(row, scheduleFor(row.id));
+export async function getDoctorById(id: number): Promise<Doctor | null> {
+  const rows = await query<DoctorRow>(`${DOCTOR_SELECT} WHERE d.id = $1`, [id]);
+  if (rows.length === 0) return null;
+  return mapDoctor(rows[0], await scheduleFor(rows[0].id));
 }
 
 /* ------------------------------------------------------------------ */
@@ -240,10 +244,13 @@ export function getDoctorById(id: number): Doctor | null {
  * - Removes slots in the past (for today).
  * Returns [] for non-bookable doctors, days off, or past dates.
  */
-export function getAvailability(doctorId: number, dateStr: string): Slot[] {
+export async function getAvailability(
+  doctorId: number,
+  dateStr: string
+): Promise<Slot[]> {
   if (!isValidDateString(dateStr)) return [];
 
-  const doctor = getDoctorById(doctorId);
+  const doctor = await getDoctorById(doctorId);
   if (!doctor || !doctor.bookable) return [];
 
   const today = todayStr();
@@ -253,17 +260,12 @@ export function getAvailability(doctorId: number, dateStr: string): Slot[] {
   const working = doctor.schedule.find((s) => s.weekday === weekday);
   if (!working) return [];
 
-  const db = getDb();
-  const taken = new Set(
-    (
-      db
-        .prepare(
-          `SELECT start_minute AS startMinute FROM appointments
-           WHERE doctor_id = ? AND date = ? AND status != 'cancelled'`
-        )
-        .all(doctorId, dateStr) as { startMinute: number }[]
-    ).map((r) => r.startMinute)
+  const takenRows = await query<{ startMinute: number }>(
+    `SELECT start_minute AS "startMinute" FROM appointments
+     WHERE doctor_id = $1 AND date = $2 AND status != 'cancelled'`,
+    [doctorId, dateStr]
   );
+  const taken = new Set(takenRows.map((r) => r.startMinute));
 
   const step = doctor.slotMinutes;
   const minFloor = dateStr === today ? nowMinutes() : -1;
@@ -304,7 +306,7 @@ type AppointmentRow = {
   start_minute: number;
   end_minute: number;
   status: Appointment["status"];
-  created_at: string;
+  created_at: string | Date;
 };
 
 function mapAppointment(r: AppointmentRow): Appointment {
@@ -326,7 +328,8 @@ function mapAppointment(r: AppointmentRow): Appointment {
     startTime: minutesToHHMM(r.start_minute),
     endTime: minutesToHHMM(r.end_minute),
     status: r.status,
-    createdAt: r.created_at,
+    createdAt:
+      r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at),
   };
 }
 
@@ -346,37 +349,60 @@ export type AppointmentFilter = {
   status?: string;
 };
 
-export function listAppointments(filter: AppointmentFilter = {}): Appointment[] {
-  const db = getDb();
+export async function listAppointments(
+  filter: AppointmentFilter = {}
+): Promise<Appointment[]> {
   const where: string[] = [];
-  const params: Record<string, unknown> = {};
+  const params: unknown[] = [];
   if (filter.doctorId) {
-    where.push("a.doctor_id = @doctorId");
-    params.doctorId = filter.doctorId;
+    params.push(filter.doctorId);
+    where.push(`a.doctor_id = $${params.length}`);
   }
   if (filter.date) {
-    where.push("a.date = @date");
-    params.date = filter.date;
+    params.push(filter.date);
+    where.push(`a.date = $${params.length}`);
   }
   if (filter.status && filter.status !== "all") {
-    where.push("a.status = @status");
-    params.status = filter.status;
+    params.push(filter.status);
+    where.push(`a.status = $${params.length}`);
   }
   const clause = where.length ? `WHERE ${where.join(" AND ")}` : "";
-  const rows = db
-    .prepare(
-      `${APPOINTMENT_SELECT} ${clause} ORDER BY a.date, a.start_minute`
-    )
-    .all(params) as AppointmentRow[];
+  const rows = await query<AppointmentRow>(
+    `${APPOINTMENT_SELECT} ${clause} ORDER BY a.date, a.start_minute`,
+    params
+  );
   return rows.map(mapAppointment);
 }
 
-export function getAppointmentByReference(reference: string): Appointment | null {
-  const db = getDb();
-  const row = db
-    .prepare(`${APPOINTMENT_SELECT} WHERE a.reference = ?`)
-    .get(reference) as AppointmentRow | undefined;
-  return row ? mapAppointment(row) : null;
+export async function getAppointmentByReference(
+  reference: string
+): Promise<Appointment | null> {
+  const rows = await query<AppointmentRow>(
+    `${APPOINTMENT_SELECT} WHERE a.reference = $1`,
+    [reference]
+  );
+  return rows.length ? mapAppointment(rows[0]) : null;
+}
+
+/**
+ * Return all appointments booked under a patient's email, newest first.
+ * The email match is case-insensitive. Optionally filter by status.
+ */
+export async function listAppointmentsByEmail(
+  email: string,
+  status?: string
+): Promise<Appointment[]> {
+  const params: unknown[] = [email];
+  const where = ["LOWER(a.patient_email) = LOWER($1)"];
+  if (status && status !== "all") {
+    params.push(status);
+    where.push(`a.status = $${params.length}`);
+  }
+  const rows = await query<AppointmentRow>(
+    `${APPOINTMENT_SELECT} WHERE ${where.join(" AND ")} ORDER BY a.date DESC, a.start_minute DESC`,
+    params
+  );
+  return rows.map(mapAppointment);
 }
 
 export type BookingInput = {
@@ -408,11 +434,13 @@ function makeReference(): string {
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
- * Create an appointment. Validates input, re-checks availability, and inserts
- * inside a transaction. The DB unique constraint on (doctor_id, date,
- * start_minute) is the final guard against a double-booking race.
+ * Create an appointment. Validates input, re-checks availability, and inserts.
+ * The DB unique constraint on (doctor_id, date, start_minute) is the final
+ * guard against a double-booking race.
  */
-export function createAppointment(input: BookingInput): BookingResult {
+export async function createAppointment(
+  input: BookingInput
+): Promise<BookingResult> {
   const name = (input.patientName ?? "").trim();
   const email = (input.patientEmail ?? "").trim();
   const phone = (input.patientPhone ?? "").trim();
@@ -435,7 +463,7 @@ export function createAppointment(input: BookingInput): BookingResult {
     return { ok: false, code: "validation", error: "Please choose a valid date." };
   }
 
-  const doctor = getDoctorById(input.doctorId);
+  const doctor = await getDoctorById(input.doctorId);
   if (!doctor) {
     return { ok: false, code: "validation", error: "That provider could not be found." };
   }
@@ -444,73 +472,59 @@ export function createAppointment(input: BookingInput): BookingResult {
   }
 
   // The requested slot must still be in the generated availability.
-  const slots = getAvailability(input.doctorId, input.date);
+  const slots = await getAvailability(input.doctorId, input.date);
   const slot = slots.find((s) => s.startMinute === input.startMinute);
   if (!slot) {
     return { ok: false, code: "unavailable", error: "That time slot is no longer available. Please pick another." };
   }
 
-  const db = getDb();
-  const insert = db.prepare(
-    `INSERT INTO appointments
-       (reference, doctor_id, patient_name, patient_email, patient_phone,
-        visit_type, reason, is_new_patient, date, start_minute, end_minute, status)
-     VALUES
-       (@reference, @doctor_id, @patient_name, @patient_email, @patient_phone,
-        @visit_type, @reason, @is_new_patient, @date, @start_minute, @end_minute, 'confirmed')`
-  );
+  await ensureReady();
+  const pool = getPool();
 
-  try {
-    const txn = db.transaction((): number => {
-      // Generate a unique reference inside the transaction.
-      let reference = makeReference();
-      const refExists = db.prepare(
-        "SELECT 1 FROM appointments WHERE reference = ?"
+  // Generate a unique reference (collisions are astronomically unlikely, but
+  // retry a few times defensively; the UNIQUE constraint is the real guard).
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const reference = makeReference();
+    try {
+      const res = await pool.query<AppointmentRow>(
+        `INSERT INTO appointments
+           (reference, doctor_id, patient_name, patient_email, patient_phone,
+            visit_type, reason, is_new_patient, date, start_minute, end_minute, status)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'confirmed')
+         RETURNING id`,
+        [
+          reference, input.doctorId, name, email, phone, visitType, reason,
+          input.isNewPatient ? 1 : 0, input.date, slot.startMinute, slot.endMinute,
+        ]
       );
-      let guard = 0;
-      while (refExists.get(reference) && guard < 10) {
-        reference = makeReference();
-        guard++;
+      const id = res.rows[0].id;
+      const row = (
+        await pool.query<AppointmentRow>(`${APPOINTMENT_SELECT} WHERE a.id = $1`, [id])
+      ).rows[0];
+      return { ok: true, appointment: mapAppointment(row) };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      // 23505 = unique_violation. Could be the reference (retry) or the
+      // (doctor, date, start_minute) slot (a genuine double-booking → conflict).
+      if (message.includes("duplicate key") || message.includes("23505")) {
+        if (message.includes("reference")) continue; // retry with a new ref
+        return { ok: false, code: "conflict", error: "That time slot was just booked by someone else. Please pick another." };
       }
-      const info = insert.run({
-        reference,
-        doctor_id: input.doctorId,
-        patient_name: name,
-        patient_email: email,
-        patient_phone: phone,
-        visit_type: visitType,
-        reason,
-        is_new_patient: input.isNewPatient ? 1 : 0,
-        date: input.date,
-        start_minute: slot.startMinute,
-        end_minute: slot.endMinute,
-      });
-      return Number(info.lastInsertRowid);
-    });
-
-    const id = txn();
-    const row = db
-      .prepare(`${APPOINTMENT_SELECT} WHERE a.id = ?`)
-      .get(id) as AppointmentRow;
-    return { ok: true, appointment: mapAppointment(row) };
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    if (message.includes("UNIQUE") && message.includes("appointments")) {
-      return { ok: false, code: "conflict", error: "That time slot was just booked by someone else. Please pick another." };
+      throw err;
     }
-    throw err;
   }
+  return { ok: false, code: "conflict", error: "Could not generate a unique booking reference. Please try again." };
 }
 
-export function updateAppointmentStatus(
+export async function updateAppointmentStatus(
   reference: string,
   status: Appointment["status"]
-): Appointment | null {
-  const db = getDb();
-  const info = db
-    .prepare(`UPDATE appointments SET status = ? WHERE reference = ?`)
-    .run(status, reference);
-  if (info.changes === 0) return null;
+): Promise<Appointment | null> {
+  const rows = await query<{ reference: string }>(
+    `UPDATE appointments SET status = $1 WHERE reference = $2 RETURNING reference`,
+    [status, reference]
+  );
+  if (rows.length === 0) return null;
   return getAppointmentByReference(reference);
 }
 
@@ -522,25 +536,25 @@ export type DashboardStats = {
   upcoming: number; // confirmed and today or later
 };
 
-export function getDashboardStats(): DashboardStats {
-  const db = getDb();
+export async function getDashboardStats(): Promise<DashboardStats> {
   const today = todayStr();
-  const row = db
-    .prepare(
-      `SELECT
-         COUNT(*) AS total,
-         SUM(CASE WHEN status = 'confirmed' THEN 1 ELSE 0 END) AS confirmed,
-         SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completed,
-         SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) AS cancelled,
-         SUM(CASE WHEN status = 'confirmed' AND date >= @today THEN 1 ELSE 0 END) AS upcoming
-       FROM appointments`
-    )
-    .get({ today }) as Record<string, number | null>;
+  const rows = await query<Record<string, string | number | null>>(
+    `SELECT
+       COUNT(*) AS total,
+       SUM(CASE WHEN status = 'confirmed' THEN 1 ELSE 0 END) AS confirmed,
+       SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completed,
+       SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) AS cancelled,
+       SUM(CASE WHEN status = 'confirmed' AND date >= $1 THEN 1 ELSE 0 END) AS upcoming
+     FROM appointments`,
+    [today]
+  );
+  const row = rows[0] ?? {};
+  const num = (v: string | number | null | undefined): number => Number(v ?? 0);
   return {
-    total: row.total ?? 0,
-    confirmed: row.confirmed ?? 0,
-    completed: row.completed ?? 0,
-    cancelled: row.cancelled ?? 0,
-    upcoming: row.upcoming ?? 0,
+    total: num(row.total),
+    confirmed: num(row.confirmed),
+    completed: num(row.completed),
+    cancelled: num(row.cancelled),
+    upcoming: num(row.upcoming),
   };
 }

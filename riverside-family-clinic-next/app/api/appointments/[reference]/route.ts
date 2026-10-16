@@ -14,11 +14,11 @@ const VALID_STATUSES: Appointment["status"][] = [
   "completed",
 ];
 
-export function GET(
+export async function GET(
   _req: NextRequest,
   { params }: { params: { reference: string } }
 ) {
-  const appointment = getAppointmentByReference(params.reference);
+  const appointment = await getAppointmentByReference(params.reference);
   if (!appointment) {
     return NextResponse.json({ error: "Appointment not found." }, { status: 404 });
   }
@@ -48,7 +48,7 @@ export async function PATCH(
     );
   }
 
-  const updated = updateAppointmentStatus(params.reference, status);
+  const updated = await updateAppointmentStatus(params.reference, status);
   if (!updated) {
     return NextResponse.json({ error: "Appointment not found." }, { status: 404 });
   }

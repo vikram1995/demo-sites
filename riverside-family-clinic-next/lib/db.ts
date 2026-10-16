@@ -1,49 +1,84 @@
-import Database from "better-sqlite3";
-import fs from "node:fs";
-import path from "node:path";
+import { Pool, type PoolClient } from "pg";
 
 /**
- * SQLite connection singleton.
+ * Postgres connection pool singleton.
+ *
+ * The demo originally used better-sqlite3 with a file on disk. That does not
+ * survive on serverless/stateless hosts (Vercel's filesystem is read-only and
+ * ephemeral), so appointments would vanish. We use Postgres (Neon) instead so
+ * bookings persist.
  *
  * Next.js (dev) re-evaluates modules on hot reload, which would otherwise open
- * a new database handle on every change and leak file descriptors. We stash the
- * instance on globalThis so a single connection survives reloads.
+ * a new pool on every change and leak connections. We stash the pool on
+ * globalThis so a single pool survives reloads.
  */
 
-const DATA_DIR = path.join(process.cwd(), "data");
-const DB_PATH = path.join(DATA_DIR, "clinic.db");
+const connectionString = process.env.DATABASE_URL;
 
 type GlobalWithDb = typeof globalThis & {
-  __clinicDb?: Database.Database;
+  __clinicPool?: Pool;
+  __clinicInit?: Promise<void>;
 };
 
 const g = globalThis as GlobalWithDb;
 
-function createConnection(): Database.Database {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-  const db = new Database(DB_PATH);
-  db.pragma("journal_mode = WAL");
-  db.pragma("foreign_keys = ON");
-  migrate(db);
-  seed(db);
-  return db;
+function createPool(): Pool {
+  if (!connectionString) {
+    throw new Error(
+      "DATABASE_URL is not set. The Riverside demo needs a Postgres connection string (Neon). " +
+        "Set it locally in .env.local and as an environment variable on your host."
+    );
+  }
+  // Neon (and most managed Postgres) require TLS. If the URL already carries
+  // sslmode=require, pg honours it; we also enable ssl defensively with
+  // rejectUnauthorized:false so the managed CA chain is accepted.
+  const needsSsl = /neon\.tech|sslmode=require/.test(connectionString);
+  return new Pool({
+    connectionString,
+    max: 5,
+    ssl: needsSsl ? { rejectUnauthorized: false } : undefined,
+  });
 }
 
-export function getDb(): Database.Database {
-  if (!g.__clinicDb) {
-    g.__clinicDb = createConnection();
+export function getPool(): Pool {
+  if (!g.__clinicPool) {
+    g.__clinicPool = createPool();
   }
-  return g.__clinicDb;
+  return g.__clinicPool;
+}
+
+/**
+ * Ensure the schema exists and the seed data is loaded. Idempotent and
+ * memoised: the first caller runs it, everyone else awaits the same promise.
+ */
+export function ensureReady(): Promise<void> {
+  if (!g.__clinicInit) {
+    g.__clinicInit = (async () => {
+      const pool = getPool();
+      const client = await pool.connect();
+      try {
+        await migrate(client);
+        await seed(client);
+      } finally {
+        client.release();
+      }
+    })().catch((err) => {
+      // Reset so a later request can retry (e.g. transient DB startup on Neon).
+      g.__clinicInit = undefined;
+      throw err;
+    });
+  }
+  return g.__clinicInit;
 }
 
 /* ------------------------------------------------------------------ */
 /* Schema                                                              */
 /* ------------------------------------------------------------------ */
 
-function migrate(db: Database.Database): void {
-  db.exec(`
+async function migrate(client: PoolClient): Promise<void> {
+  await client.query(`
     CREATE TABLE IF NOT EXISTS departments (
-      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      id          SERIAL PRIMARY KEY,
       slug        TEXT NOT NULL UNIQUE,
       name        TEXT NOT NULL,
       tag         TEXT NOT NULL,
@@ -53,7 +88,7 @@ function migrate(db: Database.Database): void {
     );
 
     CREATE TABLE IF NOT EXISTS doctors (
-      id               INTEGER PRIMARY KEY AUTOINCREMENT,
+      id               SERIAL PRIMARY KEY,
       slug             TEXT NOT NULL UNIQUE,
       name             TEXT NOT NULL,
       role             TEXT NOT NULL,
@@ -63,9 +98,9 @@ function migrate(db: Database.Database): void {
       languages        TEXT NOT NULL,
       credential_label TEXT NOT NULL,
       credential       TEXT NOT NULL,
-      new_patient_kind TEXT NOT NULL,   -- 'open' | 'wait'
+      new_patient_kind TEXT NOT NULL,
       new_patient_label TEXT NOT NULL,
-      bookable         INTEGER NOT NULL DEFAULT 1,  -- 0 = walk-in / not online-bookable
+      bookable         INTEGER NOT NULL DEFAULT 1,
       slot_minutes     INTEGER NOT NULL DEFAULT 30,
       sort_order       INTEGER NOT NULL DEFAULT 0
     );
@@ -73,7 +108,7 @@ function migrate(db: Database.Database): void {
     -- Weekly recurring working hours. weekday: 0=Sun .. 6=Sat.
     -- start_minute/end_minute are minutes from midnight. A day with no row = off.
     CREATE TABLE IF NOT EXISTS doctor_schedules (
-      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      id           SERIAL PRIMARY KEY,
       doctor_id    INTEGER NOT NULL REFERENCES doctors(id) ON DELETE CASCADE,
       weekday      INTEGER NOT NULL,
       start_minute INTEGER NOT NULL,
@@ -82,7 +117,7 @@ function migrate(db: Database.Database): void {
     );
 
     CREATE TABLE IF NOT EXISTS appointments (
-      id            INTEGER PRIMARY KEY AUTOINCREMENT,
+      id            SERIAL PRIMARY KEY,
       reference     TEXT NOT NULL UNIQUE,
       doctor_id     INTEGER NOT NULL REFERENCES doctors(id),
       patient_name  TEXT NOT NULL,
@@ -91,11 +126,11 @@ function migrate(db: Database.Database): void {
       visit_type    TEXT NOT NULL,
       reason        TEXT NOT NULL DEFAULT '',
       is_new_patient INTEGER NOT NULL DEFAULT 0,
-      date          TEXT NOT NULL,          -- 'YYYY-MM-DD'
-      start_minute  INTEGER NOT NULL,       -- minutes from midnight
+      date          TEXT NOT NULL,
+      start_minute  INTEGER NOT NULL,
       end_minute    INTEGER NOT NULL,
-      status        TEXT NOT NULL DEFAULT 'confirmed', -- confirmed | cancelled | completed
-      created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+      status        TEXT NOT NULL DEFAULT 'confirmed',
+      created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
       -- A doctor cannot have two appointments starting at the same time on a day.
       UNIQUE (doctor_id, date, start_minute)
     );
@@ -219,7 +254,7 @@ const DOCTORS: SeedDoctor[] = [
     credential: "Family NP (FNP-C)",
     newPatientKind: "open",
     newPatientLabel: "Walk-in",
-    bookable: false, // urgent care is walk-in, not online-bookable
+    bookable: false,
     slotMinutes: 30,
     schedule: [day(1, "08:00", "19:00"), day(2, "08:00", "19:00"), day(3, "08:00", "19:00"), day(4, "08:00", "19:00"), day(5, "08:00", "19:00"), day(6, "09:00", "16:00"), day(0, "10:00", "14:00")],
   },
@@ -289,70 +324,56 @@ const DOCTORS: SeedDoctor[] = [
   },
 ];
 
-function seed(db: Database.Database): void {
-  const alreadySeeded =
-    (db.prepare("SELECT COUNT(*) AS c FROM departments").get() as { c: number })
-      .c > 0;
-  if (alreadySeeded) return;
+async function seed(client: PoolClient): Promise<void> {
+  const { rows } = await client.query<{ c: string }>(
+    "SELECT COUNT(*) AS c FROM departments"
+  );
+  if (Number(rows[0]?.c ?? 0) > 0) return; // already seeded
 
-  const insertDept = db.prepare(
-    `INSERT INTO departments (slug, name, tag, icon, summary, sort_order)
-     VALUES (@slug, @name, @tag, @icon, @summary, @sort_order)`
-  );
-  const insertDoctor = db.prepare(
-    `INSERT INTO doctors
-       (slug, name, role, initials, department_id, bio, languages,
-        credential_label, credential, new_patient_kind, new_patient_label,
-        bookable, slot_minutes, sort_order)
-     VALUES
-       (@slug, @name, @role, @initials, @department_id, @bio, @languages,
-        @credential_label, @credential, @new_patient_kind, @new_patient_label,
-        @bookable, @slot_minutes, @sort_order)`
-  );
-  const insertSchedule = db.prepare(
-    `INSERT INTO doctor_schedules (doctor_id, weekday, start_minute, end_minute)
-     VALUES (@doctor_id, @weekday, @start_minute, @end_minute)`
-  );
-
-  const run = db.transaction(() => {
+  await client.query("BEGIN");
+  try {
     const deptIdBySlug = new Map<string, number>();
-    DEPARTMENTS.forEach((d, i) => {
-      const info = insertDept.run({ ...d, sort_order: i });
-      deptIdBySlug.set(d.slug, Number(info.lastInsertRowid));
-    });
+    for (let i = 0; i < DEPARTMENTS.length; i++) {
+      const d = DEPARTMENTS[i];
+      const res = await client.query<{ id: number }>(
+        `INSERT INTO departments (slug, name, tag, icon, summary, sort_order)
+         VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+        [d.slug, d.name, d.tag, d.icon, d.summary, i]
+      );
+      deptIdBySlug.set(d.slug, res.rows[0].id);
+    }
 
-    DOCTORS.forEach((doc, i) => {
+    for (let i = 0; i < DOCTORS.length; i++) {
+      const doc = DOCTORS[i];
       const departmentId = deptIdBySlug.get(doc.department);
       if (departmentId === undefined) {
         throw new Error(`Unknown department for doctor ${doc.slug}: ${doc.department}`);
       }
-      const info = insertDoctor.run({
-        slug: doc.slug,
-        name: doc.name,
-        role: doc.role,
-        initials: doc.initials,
-        department_id: departmentId,
-        bio: doc.bio,
-        languages: doc.languages,
-        credential_label: doc.credentialLabel,
-        credential: doc.credential,
-        new_patient_kind: doc.newPatientKind,
-        new_patient_label: doc.newPatientLabel,
-        bookable: doc.bookable ? 1 : 0,
-        slot_minutes: doc.slotMinutes,
-        sort_order: i,
-      });
-      const doctorId = Number(info.lastInsertRowid);
+      const res = await client.query<{ id: number }>(
+        `INSERT INTO doctors
+           (slug, name, role, initials, department_id, bio, languages,
+            credential_label, credential, new_patient_kind, new_patient_label,
+            bookable, slot_minutes, sort_order)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+         RETURNING id`,
+        [
+          doc.slug, doc.name, doc.role, doc.initials, departmentId, doc.bio,
+          doc.languages, doc.credentialLabel, doc.credential, doc.newPatientKind,
+          doc.newPatientLabel, doc.bookable ? 1 : 0, doc.slotMinutes, i,
+        ]
+      );
+      const doctorId = res.rows[0].id;
       for (const s of doc.schedule) {
-        insertSchedule.run({
-          doctor_id: doctorId,
-          weekday: s.weekday,
-          start_minute: s.start,
-          end_minute: s.end,
-        });
+        await client.query(
+          `INSERT INTO doctor_schedules (doctor_id, weekday, start_minute, end_minute)
+           VALUES ($1, $2, $3, $4)`,
+          [doctorId, s.weekday, s.start, s.end]
+        );
       }
-    });
-  });
-
-  run();
+    }
+    await client.query("COMMIT");
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  }
 }
