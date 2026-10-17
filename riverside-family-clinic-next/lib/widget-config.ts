@@ -9,10 +9,10 @@
 //
 // Defaults match the values provisioned locally for the Riverside demo.
 export const ACA_SITE =
-  process.env.NEXT_PUBLIC_ACA_SITE ?? "pk_2d4fffda3ca3c54f679dd0da";
+  process.env.NEXT_PUBLIC_ACA_SITE ?? "pk_dd0c4437e142aee81ac9034d";
 
 export const ACA_BASE =
-  process.env.NEXT_PUBLIC_ACA_BASE ?? "http://localhost:8787";
+  process.env.NEXT_PUBLIC_ACA_BASE ?? "https://ai-chat-assistant-uefa.onrender.com";
 
 // Served from /public/widget/aca-widget.js
 export const ACA_WIDGET_SRC = "/widget/aca-widget.js";
