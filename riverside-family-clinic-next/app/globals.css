@@ -1060,6 +1060,11 @@ section.soft {
   margin-left: 4px;
 }
 
+.nav-links a.nav-book,
+.nav-links a.nav-book:hover {
+  color: #fff;
+}
+
 /* Shared helpers */
 .muted {
   color: var(--muted);
