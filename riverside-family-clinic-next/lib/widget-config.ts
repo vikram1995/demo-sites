@@ -14,5 +14,10 @@ export const ACA_SITE =
 export const ACA_BASE =
   process.env.NEXT_PUBLIC_ACA_BASE ?? "https://ai-chat-assistant-uefa.onrender.com";
 
-// Served from /public/widget/aca-widget.js
-export const ACA_WIDGET_SRC = "/widget/aca-widget.js";
+// Where the <script> loads the widget bundle from. Defaults to the deployed
+// widget host so the demo always runs the latest published build, exactly like
+// a customer embed. Override with NEXT_PUBLIC_ACA_WIDGET_SRC (e.g.
+// http://localhost:5173/aca-widget.js for a local widget build).
+export const ACA_WIDGET_SRC =
+  process.env.NEXT_PUBLIC_ACA_WIDGET_SRC ??
+  "https://ai-chat-assistant-neon-five.vercel.app/aca-widget.js";
